@@ -37,16 +37,18 @@ For optimal performance, run with privileges and always stay up to date.
 
 **Windows:**
 ```powershell
-# Quick install - copy and paste in PowerShell:
-$url = "https://raw.githubusercontent.com/keizenx/windsurf-bypass/main/windsurf_bypass.py"
-$output = "$env:TEMP\windsurf_bypass.py"
-Invoke-WebRequest -Uri $url -OutFile $output -UseBasicParsing
-python $output
+# Method 1: Using curl (recommended)
+curl -L https://raw.githubusercontent.com/keizenx/windsurf-bypass/main/windsurf_bypass.py -o windsurf_bypass.py
+python windsurf_bypass.py
+
+# Method 2: Manual download
+# Go to: https://github.com/keizenx/windsurf-bypass
+# Click on windsurf_bypass.py, then "Raw", copy and save
 ```
 
 **Linux/macOS:**
 ```bash
-# Quick install - copy and paste in terminal:
+# Download and run
 curl -L https://raw.githubusercontent.com/keizenx/windsurf-bypass/main/windsurf_bypass.py -o windsurf_bypass.py
 python3 windsurf_bypass.py
 ```
