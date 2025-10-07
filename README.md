@@ -37,11 +37,12 @@ For optimal performance, run with privileges and always stay up to date.
 
 **Windows:**
 ```powershell
-# PowerShell
-irm https://raw.githubusercontent.com/keizenx/windsurf-bypass/main/scripts/install.ps1 | iex
+# Method 1: Direct download and run
+irm https://raw.githubusercontent.com/keizenx/windsurf-bypass/main/install_github.ps1 | iex
 
-# Or run directly
-.\run_bypass.ps1
+# Method 2: Manual download
+# Download windsurf_bypass.py from GitHub and run:
+python windsurf_bypass.py
 ```
 
 **Linux/macOS:**
