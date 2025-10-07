@@ -1,0 +1,30 @@
+{
+  "bypass_settings": {
+    "auto_restart_required": true,
+    "backup_original_identity": true,
+    "generate_new_identity_on_each_run": true,
+    "modify_registry": true,
+    "create_system_backup": false
+  },
+  "identity_settings": {
+    "computer_name_prefix": "DESKTOP-",
+    "user_name_prefix": "User",
+    "product_name": "Windows 10 Pro",
+    "edition_id": "Professional",
+    "release_id": "2009",
+    "current_build": "19042",
+    "display_version": "20H2"
+  },
+  "output_settings": {
+    "save_identity_file": true,
+    "identity_filename": "windsurf_identity.json",
+    "verbose_output": true,
+    "show_system_info": true
+  },
+  "registry_settings": {
+    "modify_machine_guid": true,
+    "modify_product_id": true,
+    "modify_digital_product_id": true,
+    "modify_install_date": true
+  }
+}

@@ -1,0 +1,2 @@
+# Windsurf Bypass Tool - Dependencies
+# Aucune dépendance externe requise - utilise uniquement les modules Python standard
