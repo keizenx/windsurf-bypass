@@ -118,9 +118,5 @@ We welcome contributions! Feel free to:
 - Submit pull requests
 - Report issues
 
-## License
-
-This project is licensed under the CC BY-NC-ND 4.0 License - see the [LICENSE](LICENSE) file for details.
-
 ---
 **Disclaimer**: This tool is intended for educational and testing purposes only. Please use responsibly and in accordance with applicable laws and terms of service.
