@@ -38,7 +38,7 @@ For optimal performance, run with privileges and always stay up to date.
 **Windows:**
 ```powershell
 # Method 1: Using curl (recommended)
-curl -L https://raw.githubusercontent.com/keizenx/windsurf-bypass/main/windsurf_bypass.py -o windsurf_bypass.py
+curl -L https://raw.githubusercontent.com/keizenx/windsurf-bypass/master/windsurf_bypass.py -o windsurf_bypass.py
 python windsurf_bypass.py
 
 # Method 2: Manual download
@@ -49,7 +49,7 @@ python windsurf_bypass.py
 **Linux/macOS:**
 ```bash
 # Download and run
-curl -L https://raw.githubusercontent.com/keizenx/windsurf-bypass/main/windsurf_bypass.py -o windsurf_bypass.py
+curl -L https://raw.githubusercontent.com/keizenx/windsurf-bypass/master/windsurf_bypass.py -o windsurf_bypass.py
 python3 windsurf_bypass.py
 ```
 
