@@ -89,30 +89,44 @@ class WindsurfBypass:
         return machine_guid
     
     def modify_system_identifiers(self):
-        """Modifies system identifiers to bypass detection - ENHANCED VERSION"""
+        """Modifies system identifiers to bypass detection - AGGRESSIVE VERSION"""
         import platform
         
         try:
             machine_guid = self.create_machine_guid()
             
             if platform.system() == "Windows":
-                # Enhanced Windows registry modification
+                # AGGRESSIVE Windows registry modification - More keys
                 registry_keys = [
                     # Core machine identification
                     (r"SOFTWARE\Microsoft\Cryptography", "MachineGuid"),
                     (r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "ProductId"),
                     (r"SOFTWARE\Microsoft\Windows\CurrentVersion", "ProductId"),
+                    (r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "InstallDate"),
+                    (r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "RegisteredOwner"),
+                    (r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "RegisteredOrganization"),
                     
                     # Windows Update identifiers
                     (r"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate", "SusClientId"),
                     (r"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate", "SusClientIdValidation"),
-                    
-                    # Additional Windows identifiers
                     (r"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate", "PingID"),
                     (r"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate", "AccountDomainSid"),
+                    (r"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate", "LastWaitReboot"),
                     
                     # Hardware identifiers
                     (r"SYSTEM\CurrentControlSet\Control\IDConfigDB\Hardware Profiles\0001", "HwProfileGuid"),
+                    (r"SYSTEM\CurrentControlSet\Control\IDConfigDB\Hardware Profiles\0001", "LastUsedConfig"),
+                    
+                    # Network identifiers
+                    (r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\NetworkList\Profiles", "ProfileGuid"),
+                    
+                    # Application identifiers
+                    (r"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "Start_TrackDocs"),
+                    (r"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "Start_TrackProgs"),
+                    
+                    # Additional system identifiers
+                    (r"SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings", "User Agent"),
+                    (r"SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings", "User Agent String"),
                 ]
                 
                 modified_count = 0
@@ -188,6 +202,142 @@ class WindsurfBypass:
             
         except Exception as e:
             print(f"Error modifying system identifiers: {e}")
+    
+    def modify_windsurf_specific_identifiers(self):
+        """Modify Windsurf-specific identifiers and cache - USER LEVEL"""
+        import os
+        import platform
+        import json
+        import time
+        
+        print("Modifying Windsurf-specific identifiers...")
+        
+        if platform.system() == "Windows":
+            # Windsurf-specific registry modifications - USER LEVEL
+            windsurf_user_keys = [
+                (r"SOFTWARE\Windsurf", "InstallationId"),
+                (r"SOFTWARE\Windsurf", "MachineId"),
+                (r"SOFTWARE\Windsurf", "UserId"),
+                (r"SOFTWARE\Windsurf", "SessionId"),
+                (r"SOFTWARE\Windsurf", "DeviceId"),
+                (r"SOFTWARE\Windsurf", "HardwareId"),
+                (r"SOFTWARE\Windsurf", "Fingerprint"),
+                (r"SOFTWARE\Windsurf", "ClientId"),
+                (r"SOFTWARE\Windsurf", "AccountId"),
+                (r"SOFTWARE\Windsurf", "LicenseId"),
+            ]
+            
+            # Create Windsurf registry keys in HKEY_CURRENT_USER (no admin needed)
+            try:
+                with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"SOFTWARE\Windsurf") as key:
+                    pass
+                print("[OK] Created Windsurf user registry key")
+            except Exception as e:
+                print(f"[WARN] Cannot create Windsurf user registry key: {e}")
+            
+            # Modify Windsurf-specific values in user registry
+            for key_path, value_name in windsurf_user_keys:
+                try:
+                    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE) as key:
+                        if "Id" in value_name or "Fingerprint" in value_name:
+                            new_id = str(uuid.uuid4())
+                            winreg.SetValueEx(key, value_name, 0, winreg.REG_SZ, new_id)
+                        elif "Date" in value_name:
+                            new_date = str(int(time.time()))
+                            winreg.SetValueEx(key, value_name, 0, winreg.REG_SZ, new_date)
+                        else:
+                            random_value = ''.join(random.choices('0123456789ABCDEF', k=16))
+                            winreg.SetValueEx(key, value_name, 0, winreg.REG_SZ, random_value)
+                        print(f"[OK] Modified Windsurf user {value_name}")
+                except Exception as e:
+                    print(f"[WARN] Cannot modify Windsurf user {value_name}: {e}")
+            
+            # Clear Windsurf application data
+            windsurf_data_paths = [
+                os.path.expanduser("~\\AppData\\Roaming\\Windsurf\\User Data"),
+                os.path.expanduser("~\\AppData\\Local\\Windsurf\\User Data"),
+                os.path.expanduser("~\\AppData\\Roaming\\Windsurf\\Local Storage"),
+                os.path.expanduser("~\\AppData\\Local\\Windsurf\\Local Storage"),
+                os.path.expanduser("~\\AppData\\Roaming\\Windsurf\\Session Storage"),
+                os.path.expanduser("~\\AppData\\Local\\Windsurf\\Session Storage"),
+            ]
+            
+            for data_path in windsurf_data_paths:
+                try:
+                    if os.path.exists(data_path):
+                        import shutil
+                        shutil.rmtree(data_path)
+                        print(f"[OK] Cleared Windsurf data: {data_path}")
+                    else:
+                        print(f"- Windsurf data not found: {data_path}")
+                except Exception as e:
+                    print(f"[WARN] Cannot clear {data_path}: {e}")
+            
+            # Create fake Windsurf configuration
+            try:
+                windsurf_config_path = os.path.expanduser("~\\AppData\\Roaming\\Windsurf\\config.json")
+                os.makedirs(os.path.dirname(windsurf_config_path), exist_ok=True)
+                
+                fake_config = {
+                    "machineId": str(uuid.uuid4()),
+                    "deviceId": str(uuid.uuid4()),
+                    "userId": str(uuid.uuid4()),
+                    "sessionId": str(uuid.uuid4()),
+                    "hardwareId": str(uuid.uuid4()),
+                    "fingerprint": str(uuid.uuid4()),
+                    "clientId": str(uuid.uuid4()),
+                    "accountId": str(uuid.uuid4()),
+                    "licenseId": str(uuid.uuid4()),
+                    "installationId": str(uuid.uuid4()),
+                    "lastModified": int(time.time()),
+                    "version": "1.0.0",
+                    "platform": "windows",
+                    "arch": "x64"
+                }
+                
+                with open(windsurf_config_path, 'w') as f:
+                    json.dump(fake_config, f, indent=2)
+                print(f"[OK] Created fake Windsurf config: {windsurf_config_path}")
+            except Exception as e:
+                print(f"[WARN] Cannot create fake config: {e}")
+        
+        print("Windsurf-specific modifications completed!")
+    
+    def force_close_windsurf(self):
+        """Force close all Windsurf processes and clear locks"""
+        import os
+        import platform
+        import time
+        
+        print("Force closing Windsurf processes...")
+        
+        if platform.system() == "Windows":
+            # Force kill all Windsurf processes
+            try:
+                os.system("taskkill /f /im windsurf.exe 2>nul")
+                os.system("taskkill /f /im windsurf.exe 2>nul")
+                time.sleep(2)
+                print("[OK] Windsurf processes terminated")
+            except Exception as e:
+                print(f"[WARN] Cannot terminate Windsurf processes: {e}")
+            
+            # Clear any lock files
+            lock_files = [
+                os.path.expanduser("~\\AppData\\Roaming\\Windsurf\\lockfile"),
+                os.path.expanduser("~\\AppData\\Local\\Windsurf\\lockfile"),
+                os.path.expanduser("~\\AppData\\Roaming\\Windsurf\\SingletonLock"),
+                os.path.expanduser("~\\AppData\\Local\\Windsurf\\SingletonLock"),
+            ]
+            
+            for lock_file in lock_files:
+                try:
+                    if os.path.exists(lock_file):
+                        os.remove(lock_file)
+                        print(f"[OK] Removed lock file: {lock_file}")
+                except Exception as e:
+                    print(f"[WARN] Cannot remove lock file {lock_file}: {e}")
+        
+        print("Windsurf process cleanup completed!")
     
     def generate_system_info(self) -> Dict[str, Any]:
         """Generates complete system information"""
@@ -360,6 +510,12 @@ class WindsurfBypass:
         # Modification des identifiants système
         self.modify_system_identifiers()
         
+        # Force close Windsurf processes
+        self.force_close_windsurf()
+        
+        # Modification des identifiants spécifiques à Windsurf
+        self.modify_windsurf_specific_identifiers()
+        
         # Clear Windsurf cache
         self.clear_windsurf_cache()
         
@@ -421,6 +577,8 @@ def main():
         bypass.generate_device_id()
         bypass.bypass_registry_checks()
         bypass.modify_system_identifiers()
+        bypass.force_close_windsurf()
+        bypass.modify_windsurf_specific_identifiers()
         identity = bypass.save_identity()
         print("\nSafe bypass completed!")
         print("No files were deleted.")
