@@ -234,16 +234,83 @@ class WindsurfBypass:
             print(f"Error modifying system identifiers: {e}")
     
     def modify_windsurf_specific_identifiers(self):
-        """Modify Windsurf-specific identifiers and cache - USER LEVEL"""
+        """Modify Windsurf-specific identifiers and cache - ADVANCED VERSION"""
         import os
         import platform
         import json
         import time
+        import sqlite3
+        import shutil
         
         print("Modifying Windsurf-specific identifiers...")
         
         if platform.system() == "Windows":
-            # Windsurf-specific registry modifications - USER LEVEL
+            # Advanced Windsurf data paths (from the Go tool)
+            windsurf_paths = [
+                os.path.expanduser("~\\AppData\\Roaming\\Windsurf"),
+                os.path.expanduser("~\\AppData\\Local\\Windsurf"),
+                os.path.expanduser("~\\AppData\\Roaming\\windsurf-ai"),
+                os.path.expanduser("~\\AppData\\Local\\windsurf-ai"),
+                os.path.expanduser("~\\AppData\\Roaming\\Codeium\\Windsurf"),
+                os.path.expanduser("~\\AppData\\Local\\Codeium\\Windsurf"),
+            ]
+            
+            # Telemetry keys from the Go tool
+            telemetry_keys = [
+                "machineId", "telemetry.machineId", "telemetryMachineId",
+                "deviceId", "telemetry.deviceId", "lastSessionId", "sessionId",
+                "installationId", "sqmUserId", "sqmMachineId", "clientId", "instanceId"
+            ]
+            
+            session_keys = [
+                "lastSessionDate", "sessionStartTime", "userSession", "authToken",
+                "accessToken", "refreshToken", "bearerToken", "apiKey", "userToken"
+            ]
+            
+            # Database keywords
+            database_keywords = [
+                "augment", "account", "session", "user", "login", "auth",
+                "token", "credential", "profile", "identity"
+            ]
+            
+            # Cache directories
+            cache_directories = [
+                "IndexedDB", "Local Storage", "Cache", "Code Cache", "GPUCache",
+                "blob_storage", "logs", "User/workspaceStorage", "User/History",
+                "User/logs", "CachedData", "CachedExtensions", "ShaderCache", "WebStorage"
+            ]
+            
+            # Database files
+            database_files = [
+                "state.vscdb", "storage.json", "preferences.json", "settings.json"
+            ]
+            
+            # Process each Windsurf path
+            for windsurf_path in windsurf_paths:
+                if os.path.exists(windsurf_path):
+                    print(f"[INFO] Processing Windsurf path: {windsurf_path}")
+                    
+                    # 1. Modify telemetry in database files
+                    self.modify_telemetry_in_databases(windsurf_path, telemetry_keys, session_keys)
+                    
+                    # 2. Clean cache directories
+                    self.clean_cache_directories(windsurf_path, cache_directories)
+                    
+                    # 3. Reset database records
+                    self.reset_database_records(windsurf_path, database_keywords)
+                    
+                    # 4. Modify JSON configuration files
+                    self.modify_json_configs(windsurf_path, database_files, telemetry_keys, session_keys)
+            
+            # Create Windsurf registry keys in HKEY_CURRENT_USER (no admin needed)
+            try:
+                with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"SOFTWARE\Windsurf") as key:
+                    pass
+                print("[OK] Created Windsurf user registry key")
+            except Exception as e:
+                print(f"[WARN] Cannot create Windsurf user registry key: {e}")
+            
+            # Modify Windsurf-specific values in user registry
             windsurf_user_keys = [
                 (r"SOFTWARE\Windsurf", "InstallationId"),
                 (r"SOFTWARE\Windsurf", "MachineId"),
@@ -257,15 +324,6 @@ class WindsurfBypass:
                 (r"SOFTWARE\Windsurf", "LicenseId"),
             ]
             
-            # Create Windsurf registry keys in HKEY_CURRENT_USER (no admin needed)
-            try:
-                with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"SOFTWARE\Windsurf") as key:
-                    pass
-                print("[OK] Created Windsurf user registry key")
-            except Exception as e:
-                print(f"[WARN] Cannot create Windsurf user registry key: {e}")
-            
-            # Modify Windsurf-specific values in user registry
             for key_path, value_name in windsurf_user_keys:
                 try:
                     with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE) as key:
@@ -332,6 +390,158 @@ class WindsurfBypass:
                 print(f"[WARN] Cannot create fake config: {e}")
         
         print("Windsurf-specific modifications completed!")
+    
+    def modify_telemetry_in_databases(self, windsurf_path, telemetry_keys, session_keys):
+        """Modify telemetry data in SQLite databases"""
+        import os
+        import sqlite3
+        import glob
+        
+        # Find all database files
+        db_files = []
+        for root, dirs, files in os.walk(windsurf_path):
+            for file in files:
+                if file.endswith(('.vscdb', '.db', '.sqlite', '.sqlite3')):
+                    db_files.append(os.path.join(root, file))
+        
+        for db_file in db_files:
+            try:
+                print(f"[INFO] Processing database: {db_file}")
+                conn = sqlite3.connect(db_file)
+                cursor = conn.cursor()
+                
+                # Generate new IDs
+                new_machine_id = str(uuid.uuid4())
+                new_session_id = str(uuid.uuid4())
+                
+                # Try to find and update ItemTable
+                try:
+                    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='ItemTable'")
+                    if cursor.fetchone():
+                        # Update telemetry keys
+                        for key in telemetry_keys:
+                            if "session" in key.lower():
+                                cursor.execute("UPDATE ItemTable SET value = ? WHERE key = ?", (new_session_id, key))
+                            else:
+                                cursor.execute("UPDATE ItemTable SET value = ? WHERE key = ?", (new_machine_id, key))
+                        
+                        # Delete session keys
+                        for key in session_keys:
+                            cursor.execute("DELETE FROM ItemTable WHERE key = ?", (key,))
+                        
+                        conn.commit()
+                        print(f"[OK] Updated database: {os.path.basename(db_file)}")
+                except Exception as e:
+                    print(f"[WARN] Could not update ItemTable in {db_file}: {e}")
+                
+                conn.close()
+            except Exception as e:
+                print(f"[WARN] Could not process database {db_file}: {e}")
+    
+    def clean_cache_directories(self, windsurf_path, cache_directories):
+        """Clean cache directories"""
+        import os
+        import shutil
+        
+        for cache_dir in cache_directories:
+            # Find cache directories
+            for root, dirs, files in os.walk(windsurf_path):
+                for dir_name in dirs:
+                    if cache_dir.lower() in dir_name.lower():
+                        cache_path = os.path.join(root, dir_name)
+                        try:
+                            if os.path.exists(cache_path):
+                                shutil.rmtree(cache_path)
+                                print(f"[OK] Cleared cache: {cache_path}")
+                        except Exception as e:
+                            print(f"[WARN] Could not clear cache {cache_path}: {e}")
+    
+    def reset_database_records(self, windsurf_path, database_keywords):
+        """Reset database records containing keywords"""
+        import os
+        import sqlite3
+        import glob
+        
+        # Find all database files
+        db_files = []
+        for root, dirs, files in os.walk(windsurf_path):
+            for file in files:
+                if file.endswith(('.vscdb', '.db', '.sqlite', '.sqlite3')):
+                    db_files.append(os.path.join(root, file))
+        
+        for db_file in db_files:
+            try:
+                conn = sqlite3.connect(db_file)
+                cursor = conn.cursor()
+                
+                # Get all tables
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+                tables = cursor.fetchall()
+                
+                for table in tables:
+                    table_name = table[0]
+                    if not table_name.startswith('sqlite_'):
+                        # Try to delete records containing keywords
+                        for keyword in database_keywords:
+                            try:
+                                # Try to find columns that might contain the keyword
+                                cursor.execute(f"PRAGMA table_info({table_name})")
+                                columns = cursor.fetchall()
+                                
+                                for column in columns:
+                                    col_name = column[1]
+                                    try:
+                                        cursor.execute(f"DELETE FROM {table_name} WHERE {col_name} LIKE ?", (f'%{keyword}%',))
+                                    except:
+                                        pass
+                            except:
+                                pass
+                
+                conn.commit()
+                conn.close()
+                print(f"[OK] Reset database records: {os.path.basename(db_file)}")
+            except Exception as e:
+                print(f"[WARN] Could not reset database {db_file}: {e}")
+    
+    def modify_json_configs(self, windsurf_path, database_files, telemetry_keys, session_keys):
+        """Modify JSON configuration files"""
+        import os
+        import json
+        
+        for config_file in database_files:
+            # Find JSON files
+            for root, dirs, files in os.walk(windsurf_path):
+                for file in files:
+                    if file == config_file:
+                        json_path = os.path.join(root, file)
+                        try:
+                            with open(json_path, 'r', encoding='utf-8') as f:
+                                data = json.load(f)
+                            
+                            # Generate new IDs
+                            new_machine_id = str(uuid.uuid4())
+                            new_session_id = str(uuid.uuid4())
+                            
+                            # Update telemetry keys
+                            for key in telemetry_keys:
+                                if key in data:
+                                    if "session" in key.lower():
+                                        data[key] = new_session_id
+                                    else:
+                                        data[key] = new_machine_id
+                            
+                            # Remove session keys
+                            for key in session_keys:
+                                if key in data:
+                                    del data[key]
+                            
+                            # Write back
+                            with open(json_path, 'w', encoding='utf-8') as f:
+                                json.dump(data, f, indent=2)
+                            
+                            print(f"[OK] Updated JSON config: {file}")
+                        except Exception as e:
+                            print(f"[WARN] Could not update JSON {json_path}: {e}")
     
     def force_close_windsurf(self):
         """Force close all Windsurf processes and clear locks"""
