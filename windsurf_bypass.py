@@ -89,69 +89,101 @@ class WindsurfBypass:
         return machine_guid
     
     def modify_system_identifiers(self):
-        """Modifies system identifiers to bypass detection"""
+        """Modifies system identifiers to bypass detection - ENHANCED VERSION"""
         import platform
         
         try:
             machine_guid = self.create_machine_guid()
             
             if platform.system() == "Windows":
-                # Windows registry modification - Multiple keys
+                # Enhanced Windows registry modification
                 registry_keys = [
+                    # Core machine identification
                     (r"SOFTWARE\Microsoft\Cryptography", "MachineGuid"),
                     (r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "ProductId"),
                     (r"SOFTWARE\Microsoft\Windows\CurrentVersion", "ProductId"),
+                    
+                    # Windows Update identifiers
                     (r"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate", "SusClientId"),
                     (r"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate", "SusClientIdValidation"),
+                    
+                    # Additional Windows identifiers
+                    (r"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate", "PingID"),
+                    (r"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate", "AccountDomainSid"),
+                    
+                    # Hardware identifiers
+                    (r"SYSTEM\CurrentControlSet\Control\IDConfigDB\Hardware Profiles\0001", "HwProfileGuid"),
                 ]
                 
+                modified_count = 0
                 for key_path, value_name in registry_keys:
                     try:
                         with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key_path, 0, winreg.KEY_SET_VALUE) as key:
                             if value_name == "MachineGuid":
                                 winreg.SetValueEx(key, value_name, 0, winreg.REG_SZ, machine_guid)
-                            else:
-                                # Generate random ProductId
+                            elif "ProductId" in value_name:
                                 product_id = self.generate_product_id()
                                 winreg.SetValueEx(key, value_name, 0, winreg.REG_SZ, product_id)
-                        print(f"Modified {key_path}\\{value_name}")
+                            elif "HwProfileGuid" in value_name:
+                                winreg.SetValueEx(key, value_name, 0, winreg.REG_SZ, machine_guid)
+                            else:
+                                # Generate random ID for other values
+                                random_id = ''.join(random.choices('0123456789ABCDEF', k=32))
+                                winreg.SetValueEx(key, value_name, 0, winreg.REG_SZ, random_id)
+                        print(f"[OK] Modified {key_path}\\{value_name}")
+                        modified_count += 1
                     except Exception as e:
-                        print(f"Cannot modify {key_path}\\{value_name}: {e}")
+                        print(f"[WARN] Cannot modify {key_path}\\{value_name}: {e}")
                 
-                # Also modify user-specific keys
-                try:
-                    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer", 0, winreg.KEY_SET_VALUE) as key:
-                        winreg.SetValueEx(key, "Logon User Name", 0, winreg.REG_SZ, f"User{random.randint(1000, 9999)}")
-                    print("Modified user-specific registry keys")
-                except Exception as e:
-                    print(f"Cannot modify user registry: {e}")
+                # User-specific registry modifications
+                user_keys = [
+                    (r"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer", "Logon User Name"),
+                    (r"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer", "Shell Folders"),
+                ]
                 
-                print(f"Windows registry modification completed: {machine_guid}")
+                for key_path, value_name in user_keys:
+                    try:
+                        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE) as key:
+                            if "Logon User Name" in value_name:
+                                winreg.SetValueEx(key, value_name, 0, winreg.REG_SZ, f"User{random.randint(1000, 9999)}")
+                            print(f"[OK] Modified user {key_path}\\{value_name}")
+                            modified_count += 1
+                    except Exception as e:
+                        print(f"[WARN] Cannot modify user {key_path}\\{value_name}: {e}")
+                
+                print(f"Windows registry modification completed: {modified_count} keys modified")
+                print(f"Machine GUID: {machine_guid}")
             
             elif platform.system() == "Darwin":  # macOS
-                # macOS system modification
+                # Enhanced macOS system modification
                 try:
-                    # Modify system identifiers on macOS
                     import subprocess
+                    # Modify multiple system identifiers
                     subprocess.run(['sudo', 'scutil', '--set', 'ComputerName', f'Mac-{machine_guid[:8]}'], check=False)
                     subprocess.run(['sudo', 'scutil', '--set', 'LocalHostName', f'Mac-{machine_guid[:8]}'], check=False)
                     subprocess.run(['sudo', 'scutil', '--set', 'HostName', f'Mac-{machine_guid[:8]}'], check=False)
-                    print(f"macOS system identifiers modified: {machine_guid}")
+                    
+                    # Additional macOS identifiers
+                    subprocess.run(['sudo', 'scutil', '--set', 'ComputerName', f'MacBook-{machine_guid[:8]}'], check=False)
+                    print(f"[OK] macOS system identifiers modified: {machine_guid}")
                 except Exception as e:
-                    print(f"Cannot modify macOS system identifiers (requires sudo): {e}")
+                    print(f"[WARN] Cannot modify macOS system identifiers (requires sudo): {e}")
                     print(f"   Suggested Machine GUID: {machine_guid}")
             
             elif platform.system() == "Linux":
-                # Linux system modification
+                # Enhanced Linux system modification
                 try:
-                    # Modify machine-id on Linux
                     import subprocess
+                    # Modify machine-id and hostname
                     subprocess.run(['sudo', 'sh', '-c', f'echo {machine_guid} > /etc/machine-id'], check=False)
                     subprocess.run(['sudo', 'sh', '-c', f'echo {machine_guid} > /var/lib/dbus/machine-id'], check=False)
-                    subprocess.run(['sudo', 'sh', '-c', f'echo {machine_guid} > /etc/hostname'], check=False)
-                    print(f"Linux machine-id modified: {machine_guid}")
+                    subprocess.run(['sudo', 'sh', '-c', f'echo linux-{machine_guid[:8]} > /etc/hostname'], check=False)
+                    
+                    # Additional Linux identifiers
+                    subprocess.run(['sudo', 'sh', '-c', f'echo {machine_guid} > /etc/machine-id'], check=False)
+                    print(f"[OK] Linux machine-id modified: {machine_guid}")
                 except Exception as e:
-                    print(f"Cannot modify Linux machine-id (requires sudo): {e}")
+                    print(f"[WARN] Cannot modify Linux machine-id (requires sudo): {e}")
                     print(f"   Suggested Machine GUID: {machine_guid}")
             
         except Exception as e:
@@ -235,92 +267,82 @@ class WindsurfBypass:
         return identity
     
     def clear_windsurf_cache(self):
-        """Clear Windsurf cache and temporary files"""
+        """Clear Windsurf cache and temporary files - SAFE VERSION"""
         import os
         import shutil
         import platform
         import time
         
-        cache_paths = []
+        print("Clearing Windsurf cache and temporary files...")
+        print("SAFE MODE: Only clearing cache files, not application files")
+        
+        # Safe cache paths - only cache and temp files
+        safe_cache_paths = []
         
         if platform.system() == "Windows":
-            cache_paths = [
-                os.path.expanduser("~\\AppData\\Local\\Windsurf"),
-                os.path.expanduser("~\\AppData\\Roaming\\Windsurf"),
-                os.path.expanduser("~\\AppData\\Local\\Temp\\Windsurf"),
-                os.path.expanduser("~\\AppData\\Local\\Programs\\Windsurf"),
-                os.path.expanduser("~\\AppData\\Roaming\\Microsoft\\Windows\\Recent\\Windsurf*"),
-                os.path.expanduser("~\\AppData\\Local\\Microsoft\\Windows\\INetCache\\*Windsurf*"),
+            safe_cache_paths = [
+                # Only cache directories, not the main app
+                os.path.expanduser("~\\AppData\\Local\\Windsurf\\Cache"),
+                os.path.expanduser("~\\AppData\\Local\\Windsurf\\logs"),
+                os.path.expanduser("~\\AppData\\Roaming\\Windsurf\\Cache"),
+                os.path.expanduser("~\\AppData\\Roaming\\Windsurf\\logs"),
+                os.path.expanduser("~\\AppData\\Local\\Temp\\windsurf*"),
             ]
         elif platform.system() == "Darwin":  # macOS
-            cache_paths = [
-                os.path.expanduser("~/Library/Application Support/Windsurf"),
+            safe_cache_paths = [
                 os.path.expanduser("~/Library/Caches/Windsurf"),
                 os.path.expanduser("~/Library/Logs/Windsurf"),
-                os.path.expanduser("~/Library/Preferences/com.windsurf.*"),
-                os.path.expanduser("~/Library/Saved Application State/com.windsurf.*"),
             ]
         elif platform.system() == "Linux":
-            cache_paths = [
-                os.path.expanduser("~/.config/Windsurf"),
+            safe_cache_paths = [
                 os.path.expanduser("~/.cache/Windsurf"),
-                os.path.expanduser("~/.local/share/Windsurf"),
-                os.path.expanduser("~/.local/share/applications/windsurf*"),
             ]
         
-        print("Clearing Windsurf cache and temporary files...")
-        print("This may take a moment...")
-        
         cleared_count = 0
-        for cache_path in cache_paths:
-            try:
-                if os.path.exists(cache_path):
-                    # Try to close any processes that might be using the files
-                    if platform.system() == "Windows":
-                        try:
-                            os.system("taskkill /f /im windsurf.exe 2>nul")
-                            time.sleep(1)
-                        except:
-                            pass
-                    
-                    shutil.rmtree(cache_path)
-                    print(f"✓ Cleared: {cache_path}")
-                    cleared_count += 1
-                else:
-                    print(f"- Not found: {cache_path}")
-            except Exception as e:
-                print(f"⚠ Cannot clear {cache_path}: {e}")
-                # Try alternative method
-                try:
-                    if os.path.isfile(cache_path):
-                        os.remove(cache_path)
-                        print(f"✓ Removed file: {cache_path}")
-                        cleared_count += 1
-                except:
-                    pass
         
-        # Additional cleanup for Windows
+        # First, try to close Windsurf processes safely
         if platform.system() == "Windows":
             try:
-                # Clear Windows temp files
-                temp_path = os.path.expanduser("~\\AppData\\Local\\Temp")
-                for item in os.listdir(temp_path):
-                    if "windsurf" in item.lower():
-                        item_path = os.path.join(temp_path, item)
-                        try:
-                            if os.path.isdir(item_path):
-                                shutil.rmtree(item_path)
-                            else:
-                                os.remove(item_path)
-                            print(f"✓ Cleared temp: {item}")
-                            cleared_count += 1
-                        except:
-                            pass
+                print("Attempting to close Windsurf processes...")
+                os.system("taskkill /f /im windsurf.exe 2>nul")
+                time.sleep(2)
             except:
                 pass
         
-        print(f"\nCache clearing completed! ({cleared_count} items cleared)")
-        print("Windsurf cache has been cleared successfully.")
+        # Clear only safe cache paths
+        for cache_path in safe_cache_paths:
+            try:
+                if os.path.exists(cache_path):
+                    shutil.rmtree(cache_path)
+                    print(f"[OK] Cleared cache: {cache_path}")
+                    cleared_count += 1
+                else:
+                    print(f"- Cache not found: {cache_path}")
+            except Exception as e:
+                print(f"[WARN] Cannot clear {cache_path}: {e}")
+        
+        # Clear Windows temp files with Windsurf in name
+        if platform.system() == "Windows":
+            try:
+                temp_path = os.path.expanduser("~\\AppData\\Local\\Temp")
+                if os.path.exists(temp_path):
+                    for item in os.listdir(temp_path):
+                        if "windsurf" in item.lower() and ("cache" in item.lower() or "temp" in item.lower() or "log" in item.lower()):
+                            item_path = os.path.join(temp_path, item)
+                            try:
+                                if os.path.isdir(item_path):
+                                    shutil.rmtree(item_path)
+                                else:
+                                    os.remove(item_path)
+                                print(f"[OK] Cleared temp: {item}")
+                                cleared_count += 1
+                            except:
+                                pass
+            except:
+                pass
+        
+        print(f"\nSAFE cache clearing completed! ({cleared_count} cache items cleared)")
+        print("Application files were preserved.")
 
     def run_bypass(self):
         """Exécute le processus de bypass complet"""
@@ -388,13 +410,33 @@ def main():
         print("You can now restart Windsurf.")
         return
     
+    # Check for safe mode argument
+    if len(sys.argv) > 1 and sys.argv[1] == "--safe":
+        print("Windsurf Free VIP - Safe Mode")
+        print("=" * 40)
+        print("Safe mode: Only modifies registry, no file deletion")
+        bypass = WindsurfBypass()
+        bypass.generate_random_uuid()
+        bypass.generate_random_mac()
+        bypass.generate_device_id()
+        bypass.bypass_registry_checks()
+        bypass.modify_system_identifiers()
+        identity = bypass.save_identity()
+        print("\nSafe bypass completed!")
+        print("No files were deleted.")
+        print("Restart your computer for changes to take effect.")
+        return
+    
     print("Windsurf Free VIP")
     print("Tools to bypass Windsurf account limits")
     print("=" * 50)
     print("Available options:")
     print("  --test          : Test mode (check if script works)")
+    print("  --safe          : Safe mode (registry only, no file deletion)")
     print("  --clear-cache   : Clear Windsurf cache only")
     print("  (no arguments)  : Full bypass with cache clearing")
+    print("=" * 50)
+    print("RECOMMENDED: Use --safe mode to avoid file deletion issues")
     print("=" * 50)
     
     # Check administrator privileges
