@@ -96,17 +96,37 @@ class WindsurfBypass:
             machine_guid = self.create_machine_guid()
             
             if platform.system() == "Windows":
-                # Windows registry modification
-                key_path = r"SOFTWARE\Microsoft\Cryptography"
-                value_name = "MachineGuid"
+                # Windows registry modification - Multiple keys
+                registry_keys = [
+                    (r"SOFTWARE\Microsoft\Cryptography", "MachineGuid"),
+                    (r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "ProductId"),
+                    (r"SOFTWARE\Microsoft\Windows\CurrentVersion", "ProductId"),
+                    (r"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate", "SusClientId"),
+                    (r"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate", "SusClientIdValidation"),
+                ]
                 
+                for key_path, value_name in registry_keys:
+                    try:
+                        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key_path, 0, winreg.KEY_SET_VALUE) as key:
+                            if value_name == "MachineGuid":
+                                winreg.SetValueEx(key, value_name, 0, winreg.REG_SZ, machine_guid)
+                            else:
+                                # Generate random ProductId
+                                product_id = self.generate_product_id()
+                                winreg.SetValueEx(key, value_name, 0, winreg.REG_SZ, product_id)
+                        print(f"Modified {key_path}\\{value_name}")
+                    except Exception as e:
+                        print(f"Cannot modify {key_path}\\{value_name}: {e}")
+                
+                # Also modify user-specific keys
                 try:
-                    with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key_path, 0, winreg.KEY_SET_VALUE) as key:
-                        winreg.SetValueEx(key, value_name, 0, winreg.REG_SZ, machine_guid)
-                    print(f"Machine GUID modified in registry: {machine_guid}")
+                    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer", 0, winreg.KEY_SET_VALUE) as key:
+                        winreg.SetValueEx(key, "Logon User Name", 0, winreg.REG_SZ, f"User{random.randint(1000, 9999)}")
+                    print("Modified user-specific registry keys")
                 except Exception as e:
-                    print(f"Cannot modify registry (requires admin rights): {e}")
-                    print(f"   Suggested Machine GUID: {machine_guid}")
+                    print(f"Cannot modify user registry: {e}")
+                
+                print(f"Windows registry modification completed: {machine_guid}")
             
             elif platform.system() == "Darwin":  # macOS
                 # macOS system modification
@@ -115,6 +135,7 @@ class WindsurfBypass:
                     import subprocess
                     subprocess.run(['sudo', 'scutil', '--set', 'ComputerName', f'Mac-{machine_guid[:8]}'], check=False)
                     subprocess.run(['sudo', 'scutil', '--set', 'LocalHostName', f'Mac-{machine_guid[:8]}'], check=False)
+                    subprocess.run(['sudo', 'scutil', '--set', 'HostName', f'Mac-{machine_guid[:8]}'], check=False)
                     print(f"macOS system identifiers modified: {machine_guid}")
                 except Exception as e:
                     print(f"Cannot modify macOS system identifiers (requires sudo): {e}")
@@ -127,6 +148,7 @@ class WindsurfBypass:
                     import subprocess
                     subprocess.run(['sudo', 'sh', '-c', f'echo {machine_guid} > /etc/machine-id'], check=False)
                     subprocess.run(['sudo', 'sh', '-c', f'echo {machine_guid} > /var/lib/dbus/machine-id'], check=False)
+                    subprocess.run(['sudo', 'sh', '-c', f'echo {machine_guid} > /etc/hostname'], check=False)
                     print(f"Linux machine-id modified: {machine_guid}")
                 except Exception as e:
                     print(f"Cannot modify Linux machine-id (requires sudo): {e}")
@@ -212,6 +234,46 @@ class WindsurfBypass:
         print(f"Identité sauvegardée dans {filename}")
         return identity
     
+    def clear_windsurf_cache(self):
+        """Clear Windsurf cache and temporary files"""
+        import os
+        import shutil
+        import platform
+        
+        cache_paths = []
+        
+        if platform.system() == "Windows":
+            cache_paths = [
+                os.path.expanduser("~\\AppData\\Local\\Windsurf"),
+                os.path.expanduser("~\\AppData\\Roaming\\Windsurf"),
+                os.path.expanduser("~\\AppData\\Local\\Temp\\Windsurf"),
+            ]
+        elif platform.system() == "Darwin":  # macOS
+            cache_paths = [
+                os.path.expanduser("~/Library/Application Support/Windsurf"),
+                os.path.expanduser("~/Library/Caches/Windsurf"),
+                os.path.expanduser("~/Library/Logs/Windsurf"),
+            ]
+        elif platform.system() == "Linux":
+            cache_paths = [
+                os.path.expanduser("~/.config/Windsurf"),
+                os.path.expanduser("~/.cache/Windsurf"),
+                os.path.expanduser("~/.local/share/Windsurf"),
+            ]
+        
+        print("Clearing Windsurf cache...")
+        for cache_path in cache_paths:
+            try:
+                if os.path.exists(cache_path):
+                    shutil.rmtree(cache_path)
+                    print(f"Cleared: {cache_path}")
+                else:
+                    print(f"Not found: {cache_path}")
+            except Exception as e:
+                print(f"Cannot clear {cache_path}: {e}")
+        
+        print("Cache clearing completed!")
+
     def run_bypass(self):
         """Exécute le processus de bypass complet"""
         print("Starting Windsurf bypass...")
@@ -228,6 +290,9 @@ class WindsurfBypass:
         # Modification des identifiants système
         self.modify_system_identifiers()
         
+        # Clear Windsurf cache
+        self.clear_windsurf_cache()
+        
         # Sauvegarde de l'identité
         identity = self.save_identity()
         
@@ -242,6 +307,11 @@ class WindsurfBypass:
         
         print("\nNote: A system restart may be required for changes to take effect.")
         print("   Make sure you have administrator privileges to modify the registry.")
+        print("\nIMPORTANT: After running this script:")
+        print("1. Close Windsurf completely")
+        print("2. Restart your computer")
+        print("3. Clear Windsurf cache if possible")
+        print("4. Open Windsurf again")
 
 def main():
     """Main function"""
