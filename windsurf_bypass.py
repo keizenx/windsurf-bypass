@@ -88,7 +88,7 @@ class WindsurfBypass:
         print(f"Machine GUID créé: {machine_guid}")
         return machine_guid
     
-    def modify_system_identifiers(self):
+    def modify_system_identifiers(self, admin_mode=False):
         """Modifies system identifiers to bypass detection - AGGRESSIVE VERSION"""
         import platform
         
@@ -128,6 +128,36 @@ class WindsurfBypass:
                     (r"SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings", "User Agent"),
                     (r"SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings", "User Agent String"),
                 ]
+                
+                # Add admin-only keys if in admin mode
+                if admin_mode:
+                    admin_keys = [
+                        # System-level identifiers (admin only)
+                        (r"SYSTEM\CurrentControlSet\Control\SystemInformation", "SystemBiosVersion"),
+                        (r"SYSTEM\CurrentControlSet\Control\SystemInformation", "SystemBiosDate"),
+                        (r"SYSTEM\CurrentControlSet\Control\SystemInformation", "SystemManufacturer"),
+                        (r"SYSTEM\CurrentControlSet\Control\SystemInformation", "SystemProductName"),
+                        (r"SYSTEM\CurrentControlSet\Control\SystemInformation", "SystemVersion"),
+                        (r"SYSTEM\CurrentControlSet\Control\SystemInformation", "SystemSerialNumber"),
+                        
+                        # Hardware identifiers (admin only)
+                        (r"SYSTEM\CurrentControlSet\Control\IDConfigDB\Hardware Profiles\0001", "HwProfileGuid"),
+                        (r"SYSTEM\CurrentControlSet\Control\IDConfigDB\Hardware Profiles\0001", "LastUsedConfig"),
+                        (r"SYSTEM\CurrentControlSet\Control\IDConfigDB\Hardware Profiles\0001", "FriendlyName"),
+                        
+                        # Network identifiers (admin only)
+                        (r"SYSTEM\CurrentControlSet\Control\Class\{4D36E972-E325-11CE-BFC1-08002BE10318}", "NetworkAddress"),
+                        (r"SYSTEM\CurrentControlSet\Control\Class\{4D36E972-E325-11CE-BFC1-08002BE10318}", "PnpInstanceID"),
+                        
+                        # Additional system keys (admin only)
+                        (r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "DigitalProductId"),
+                        (r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "InstallTime"),
+                        (r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "InstallationType"),
+                        (r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "EditionID"),
+                        (r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "BuildLabEx"),
+                        (r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "CompositionEditionID"),
+                    ]
+                    registry_keys.extend(admin_keys)
                 
                 modified_count = 0
                 for key_path, value_name in registry_keys:
@@ -585,16 +615,60 @@ def main():
         print("Restart your computer for changes to take effect.")
         return
     
+    # Check for admin mode argument
+    if len(sys.argv) > 1 and sys.argv[1] == "--admin":
+        print("Windsurf Free VIP - Admin Mode")
+        print("=" * 40)
+        print("Admin mode: Full system modification with admin privileges")
+        print("WARNING: This mode requires administrator privileges!")
+        
+        # Check if running as admin
+        try:
+            is_admin = os.getuid() == 0
+        except AttributeError:
+            # Windows
+            import ctypes
+            is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
+        
+        if not is_admin:
+            print("ERROR: Admin mode requires administrator privileges!")
+            print("Please run as administrator or use --safe mode instead.")
+            print("")
+            print("To run as administrator:")
+            print("1. Right-click on Command Prompt or PowerShell")
+            print("2. Select 'Run as administrator'")
+            print("3. Navigate to this directory")
+            print("4. Run: python windsurf_bypass.py --admin")
+            return
+        
+        print("Admin privileges confirmed. Starting aggressive bypass...")
+        bypass = WindsurfBypass()
+        bypass.generate_random_uuid()
+        bypass.generate_random_mac()
+        bypass.generate_device_id()
+        bypass.bypass_registry_checks()
+        bypass.modify_system_identifiers(admin_mode=True)
+        bypass.force_close_windsurf()
+        bypass.modify_windsurf_specific_identifiers()
+        bypass.clear_windsurf_cache()
+        identity = bypass.save_identity()
+        print("\nAdmin bypass completed!")
+        print("All system identifiers have been modified.")
+        print("Restart your computer for changes to take effect.")
+        return
+    
     print("Windsurf Free VIP")
     print("Tools to bypass Windsurf account limits")
     print("=" * 50)
     print("Available options:")
     print("  --test          : Test mode (check if script works)")
     print("  --safe          : Safe mode (registry only, no file deletion)")
+    print("  --admin         : Admin mode (full system modification - requires admin)")
     print("  --clear-cache   : Clear Windsurf cache only")
     print("  (no arguments)  : Full bypass with cache clearing")
     print("=" * 50)
     print("RECOMMENDED: Use --safe mode to avoid file deletion issues")
+    print("ADVANCED: Use --admin mode for maximum bypass effectiveness")
     print("=" * 50)
     
     # Check administrator privileges
