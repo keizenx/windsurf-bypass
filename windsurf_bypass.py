@@ -239,6 +239,7 @@ class WindsurfBypass:
         import os
         import shutil
         import platform
+        import time
         
         cache_paths = []
         
@@ -247,32 +248,79 @@ class WindsurfBypass:
                 os.path.expanduser("~\\AppData\\Local\\Windsurf"),
                 os.path.expanduser("~\\AppData\\Roaming\\Windsurf"),
                 os.path.expanduser("~\\AppData\\Local\\Temp\\Windsurf"),
+                os.path.expanduser("~\\AppData\\Local\\Programs\\Windsurf"),
+                os.path.expanduser("~\\AppData\\Roaming\\Microsoft\\Windows\\Recent\\Windsurf*"),
+                os.path.expanduser("~\\AppData\\Local\\Microsoft\\Windows\\INetCache\\*Windsurf*"),
             ]
         elif platform.system() == "Darwin":  # macOS
             cache_paths = [
                 os.path.expanduser("~/Library/Application Support/Windsurf"),
                 os.path.expanduser("~/Library/Caches/Windsurf"),
                 os.path.expanduser("~/Library/Logs/Windsurf"),
+                os.path.expanduser("~/Library/Preferences/com.windsurf.*"),
+                os.path.expanduser("~/Library/Saved Application State/com.windsurf.*"),
             ]
         elif platform.system() == "Linux":
             cache_paths = [
                 os.path.expanduser("~/.config/Windsurf"),
                 os.path.expanduser("~/.cache/Windsurf"),
                 os.path.expanduser("~/.local/share/Windsurf"),
+                os.path.expanduser("~/.local/share/applications/windsurf*"),
             ]
         
-        print("Clearing Windsurf cache...")
+        print("Clearing Windsurf cache and temporary files...")
+        print("This may take a moment...")
+        
+        cleared_count = 0
         for cache_path in cache_paths:
             try:
                 if os.path.exists(cache_path):
+                    # Try to close any processes that might be using the files
+                    if platform.system() == "Windows":
+                        try:
+                            os.system("taskkill /f /im windsurf.exe 2>nul")
+                            time.sleep(1)
+                        except:
+                            pass
+                    
                     shutil.rmtree(cache_path)
-                    print(f"Cleared: {cache_path}")
+                    print(f"✓ Cleared: {cache_path}")
+                    cleared_count += 1
                 else:
-                    print(f"Not found: {cache_path}")
+                    print(f"- Not found: {cache_path}")
             except Exception as e:
-                print(f"Cannot clear {cache_path}: {e}")
+                print(f"⚠ Cannot clear {cache_path}: {e}")
+                # Try alternative method
+                try:
+                    if os.path.isfile(cache_path):
+                        os.remove(cache_path)
+                        print(f"✓ Removed file: {cache_path}")
+                        cleared_count += 1
+                except:
+                    pass
         
-        print("Cache clearing completed!")
+        # Additional cleanup for Windows
+        if platform.system() == "Windows":
+            try:
+                # Clear Windows temp files
+                temp_path = os.path.expanduser("~\\AppData\\Local\\Temp")
+                for item in os.listdir(temp_path):
+                    if "windsurf" in item.lower():
+                        item_path = os.path.join(temp_path, item)
+                        try:
+                            if os.path.isdir(item_path):
+                                shutil.rmtree(item_path)
+                            else:
+                                os.remove(item_path)
+                            print(f"✓ Cleared temp: {item}")
+                            cleared_count += 1
+                        except:
+                            pass
+            except:
+                pass
+        
+        print(f"\nCache clearing completed! ({cleared_count} items cleared)")
+        print("Windsurf cache has been cleared successfully.")
 
     def run_bypass(self):
         """Exécute le processus de bypass complet"""
@@ -305,13 +353,17 @@ class WindsurfBypass:
         print(f"   Computer Name: {identity['system_info']['computer_name']}")
         print(f"   User Name: {identity['system_info']['user_name']}")
         
-        print("\nNote: A system restart may be required for changes to take effect.")
-        print("   Make sure you have administrator privileges to modify the registry.")
-        print("\nIMPORTANT: After running this script:")
-        print("1. Close Windsurf completely")
-        print("2. Restart your computer")
-        print("3. Clear Windsurf cache if possible")
-        print("4. Open Windsurf again")
+        print("\n" + "=" * 60)
+        print("IMPORTANT: Follow these steps for complete bypass:")
+        print("=" * 60)
+        print("1. CLOSE Windsurf completely (all windows and processes)")
+        print("2. Wait 30 seconds for processes to fully terminate")
+        print("3. RESTART your computer (this is crucial!)")
+        print("4. After restart, run: python windsurf_bypass.py --clear-cache")
+        print("5. Open Windsurf again")
+        print("\nNote: A system restart is REQUIRED for registry changes to take effect.")
+        print("The cache clearing option helps ensure a clean start.")
+        print("=" * 60)
 
 def main():
     """Main function"""
@@ -326,8 +378,23 @@ def main():
         print("✓ Ready for bypass operations")
         return
     
+    # Check for cache clear only argument
+    if len(sys.argv) > 1 and sys.argv[1] == "--clear-cache":
+        print("Windsurf Free VIP - Cache Clear Mode")
+        print("=" * 40)
+        bypass = WindsurfBypass()
+        bypass.clear_windsurf_cache()
+        print("\nCache clearing completed!")
+        print("You can now restart Windsurf.")
+        return
+    
     print("Windsurf Free VIP")
     print("Tools to bypass Windsurf account limits")
+    print("=" * 50)
+    print("Available options:")
+    print("  --test          : Test mode (check if script works)")
+    print("  --clear-cache   : Clear Windsurf cache only")
+    print("  (no arguments)  : Full bypass with cache clearing")
     print("=" * 50)
     
     # Check administrator privileges
